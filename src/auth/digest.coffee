@@ -17,7 +17,8 @@ class Digest extends Base
     # Algorithm of encryption, could be MD5 or MD5-sess, default is MD5.
     @options.algorithm = if @options.algorithm is 'MD5-sess' then 'MD5-sess' else 'MD5'
     # Quality of protection is by default auth.
-    @options.qop = if @options.qop is 'none' then '' else 'auth'
+    @options.qop = if @options.qop is 'none' then '' else if @options.qop is 'auth' || @options.qop is 'auth-int' then @options.qop else 'auth'
+
 
   # Processes line from authentication file.
   processLine: (line) ->
@@ -60,7 +61,11 @@ class Digest extends Base
   # Searching for user.
   findUser: (req, co, callback) ->        
     if @validateNonce co.nonce
-      ha2 = utils.md5 "#{req.method}:#{co.uri}"
+      if co.qop is 'auth-int'
+        hashBody = utils.md5 req.body
+        ha2 = utils.md5 "#{req.method}:#{co.uri}:#{hashBody}"
+      else
+        ha2 = utils.md5 "#{req.method}:#{co.uri}"
       
       if @checker # Custom authentication.
         @checker.apply this, [co.username, (hash) =>
